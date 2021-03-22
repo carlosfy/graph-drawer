@@ -1,31 +1,21 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { select } from 'd3';
 
-const Drawer = ({ sourceImage, nodes, edges, dimensions, add, svgReference, handleClick, changeDistances, selected }) => {
+const Drawer = ({ firstClick, imageState, imagePosition, mousePosition, handleMouseMove, sourceImage, nodes, edges, dimensions, add, svgReference, handleClick, changeDistances, selected }) => {
     const [inNode, setinNode] = useState(null)
     var containerEle = document.getElementById('container')
-    // var image = document.getElementById("upload").files[0];
-    function handleImageUpload() {
-
-        var image = document.getElementById("upload").files[0];
-
-        var reader = new FileReader();
-
-        reader.onload = function (e) {
-            document.getElementById("photo").src = e.target.result;
-        }
-        // console.log(reader.readAsDataURL(image))
-        reader.readAsDataURL(image);
-
-    }
+    const [mousePosition2, setMousePosition2] = useState({ x: 0, y: 0 })
+    const handleMouseMove2 = useCallback(event => {
+        const { clientX, clientY } = event;
+        setMousePosition2({ x: clientX, y: clientY })
+    }, [setMousePosition2])
 
 
 
     useEffect(() => {
         const svg = select(svgReference.current)
         containerEle = document.getElementById('container')
-        // var image = document.getElementById("upload").files[0];
-        // image = document.getElementById("upload").files[0];
+
 
         changeDistances(containerEle)
 
@@ -46,11 +36,18 @@ const Drawer = ({ sourceImage, nodes, edges, dimensions, add, svgReference, hand
                 return "M" + nodes[d.source].x + ',' + nodes[d.source].y + 'L' + nodes[d.target].x + ',' + nodes[d.target].y;
             })
 
-        svg.select('#photo')
-            .attr('x', 100)
-            .attr('width', 500)
-            .attr('height', 500)
-            .attr('href', d => sourceImage)
+        // svg.select('#photo')
+        //     .attr('x', () => {
+        //         if (imageState == 0) return imagePosition.x;
+        //         return imagePosition.x + mousePosition2.x - firstClick.x;
+        //     })
+        //     .attr('y', () => {
+        //         if (imageState == 0) return imagePosition.y;
+        //         return imagePosition.y + mousePosition2.y - firstClick.y;
+        //     })
+        //     .attr('width', 500)
+        //     .attr('height', 500)
+        //     .attr('href', d => sourceImage)
 
         svg.selectAll('.node')
             .data(nodes)
@@ -84,17 +81,43 @@ const Drawer = ({ sourceImage, nodes, edges, dimensions, add, svgReference, hand
         // })
 
     }, [nodes, edges, dimensions, inNode, selected, sourceImage])
+    useEffect(() => {
+        const svg = select(svgReference.current)
+        svg.select('#photo')
+            .attr('x', () => {
+                if (imageState == 0) return imagePosition.x;
+                return imagePosition.x + mousePosition2.x - firstClick.x;
+            })
+            .attr('y', () => {
+                if (imageState == 0) return imagePosition.y;
+                return imagePosition.y + mousePosition2.y - firstClick.y;
+            })
+    }, [mousePosition2])
+
+    useEffect(() => {
+        const svg = select(svgReference.current)
+        svg.select('#photo')
+            .attr('x', () => {
+                if (imageState == 0) return imagePosition.x;
+                return imagePosition.x + mousePosition2.x - firstClick.x;
+            })
+            .attr('y', () => {
+                if (imageState == 0) return imagePosition.y;
+                return imagePosition.y + mousePosition2.y - firstClick.y;
+            })
+            .attr('width', 500)
+            .attr('height', 500)
+            .attr('href', d => sourceImage)
+    }, [sourceImage])
 
     return (
         <div id='container' style={{ width: dimensions.width, height: dimensions.height, marginBottom: "2rem" }} >
-            <svg id='svg' className='theSvg' ref={svgReference} style={{ width: "100%" }} onClick={(e) => { handleClick(e); console.log('In drawer: ', e.target.className.baseVal) }}>
+            <svg id='svg' className='theSvg' ref={svgReference} style={{ width: "100%" }} onMouseMove={handleMouseMove2} onClick={(e) => { handleClick(e); console.log('In drawer: ', e.target.className.baseVal) }}>
                 <image className='theImage' href='./googleLogo.png' id='photo' x="0" y="0" height="100" width="100" />
                 <circle r='5' cx='20' cy='20' fill='black'></circle>
             </svg>
             <div>
                 <p>Hover: {inNode}</p>
-                <input id="upload" type="file" onChange={handleImageUpload} />
-                <img id="display-image" src="" />
             </div>
         </div>
     )

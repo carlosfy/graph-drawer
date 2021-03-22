@@ -1,12 +1,14 @@
 import './App.css';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 import Drawer from './components/Drawer'
+import { every } from 'd3-array';
 
 function App() {
   const [mode, setMode] = useState("create")
   const [container, setContainer] = useState()
   const [dimensions, setDimensions] = useState({ width: 700, height: 700 })
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
 
   const [nodes, setNodes] = useState([{ id: 0, x: 10, y: 10 }, { id: 1, x: 50, y: 50 }]);
   const [nextNodeId, setNextNodeId] = useState(2)
@@ -20,11 +22,17 @@ function App() {
   const [adj, setAdj] = useState([[0, 1], [1, 0]])
 
   const [sourceImage, setSourceImage] = useState('')
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 })
+  const [imageState, setImageState] = useState(0)
+  const [firstClick, setFirstClick] = useState({ x: 0, y: 0 })
 
 
   const svgRef = useRef();
 
-
+  const handleMouseMove = useCallback(event => {
+    const { clientX, clientY } = event;
+    setMousePosition({ x: clientX, y: clientY })
+  }, [setMousePosition])
 
 
   const changeDistances = (element) => {
@@ -75,11 +83,15 @@ function App() {
 
   const deleteNode = (id) => {
     let currentNode = nodes.filter(ele => ele.id == id)[0];
-    console.log('current Node:', currentNode);
-    console.log('filter: ', nodes.filter(ele => ele.id != id))
     edges.forEach(ele => {
       if (ele.source == id || ele.target == id) deleteEdge(ele.id);
     })
+    setTimeout(
+      setNodes(current => {
+        return current.filter(ele => ele.id != id)
+      }), 50
+    )
+
 
   }
 
@@ -96,7 +108,6 @@ function App() {
     if (typeof adj[source] === 'undefined') return;
     if (typeof adj[source][target] === 'undefined') return;
     if (adj[source][target] === 1) return;
-    console.log('you Created and edge')
     let newId = getNextEdgeId();
     setEdges([...edges, { id: newId, source: source, target: target }])
     setAdj(adj => {
@@ -163,41 +174,40 @@ function App() {
             break;
 
         }
+        break;
+      case 'image':
+        console.log('mode:image')
+        switch (event.target.className.baseVal) {
+          case 'theImage':
+            console.log('case:theImg')
+            if (imageState == 1) {
+              setImagePosition(currentPosition => {
+                return { x: currentPosition.x + event.clientX - firstClick.x, y: currentPosition.y + event.clientY - firstClick.y }
+
+              })
+              setFirstClick({ x: 0, y: 0 })
+              setImageState(0)
+            }
+            else {
+              setFirstClick({ x: event.clientX, y: event.clientY })
+              setImageState(1)
+            }
+            break;
+          default:
+            if (imageState == 1) {
+              setImagePosition(currentPosition => {
+                return { x: currentPosition.x + event.clientX - firstClick.x, y: currentPosition.y + event.clientY - firstClick.y }
+
+              })
+              setFirstClick({ x: 0, y: 0 })
+              setImageState(0)
+            }
+        }
+        break;
     }
   }
 
-  const handleClick2 = (event) => {
-    switch (event.target.className.baseVal) {
-      case "theSvg":
-        if (mode === 'node') {
-          addNodeMouse(event);
-        }
 
-        console.log('svg')
-        break;
-      case 'node':
-        console.log('node');
-        if (edgeState === 0) {
-          setSourceEdge(event.target.id);
-          setEdgeState(1)
-        }
-        else {
-          console.log('the second node is:', event.target.id)
-          setTargetEdge(event.target.id);
-          console.log('sourceEdge, targetEdge: ', sourceEdge, targetEdge)
-          addEdge(sourceEdge, event.target.id);
-          setEdgeState(0);
-          setSourceEdge(null);
-          setTargetEdge(null);
-        }
-        break;
-      case 'edge':
-        console.log('edge')
-        break;
-      default:
-        break;
-    }
-  }
 
   // Image
   function handleImageUpload() {
@@ -208,7 +218,7 @@ function App() {
 
     reader.onload = function (e) {
       setSourceImage(ele => e.target.result)
-      document.getElementById("display-image").src = e.target.result;
+
     }
 
     reader.readAsDataURL(image);
@@ -226,7 +236,7 @@ function App() {
 
   return (
     <React.Fragment>
-      <Drawer sourceImage={sourceImage} nodes={nodes} edges={edges} dimensions={dimensions} add={addNodeMouse} svgReference={svgRef} handleClick={handleClick} changeDistances={changeDistances} selected={sourceEdge} />
+      <Drawer firstClick={firstClick} imageState={imageState} imagePosition={imagePosition} mousePosition={mousePosition} handleMouseMove={handleMouseMove} sourceImage={sourceImage} nodes={nodes} edges={edges} dimensions={dimensions} add={addNodeMouse} svgReference={svgRef} handleClick={handleClick} changeDistances={changeDistances} selected={sourceEdge} />
       <button onClick={addRandomNode}>Add node</button>
       <button onClick={reset}>Reset</button>
       <div>
@@ -242,7 +252,8 @@ function App() {
       </div>
       <div>
         <p>
-          State: {mode}
+          State: {mode},
+          MousePosition: {mousePosition.x} {mousePosition.y}
         </p>
       </div>
       <div>
