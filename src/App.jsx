@@ -1,10 +1,157 @@
 import './App.css';
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useReducer } from 'react';
 
 import Drawer from './components/Drawer'
 import { every } from 'd3-array';
+import { packSiblings } from 'd3-hierarchy';
+
+function reducer(state, action) {
+  console.log("dispatch used")
+  switch (action.type) {
+    case 'change-sourceImage':
+      return {
+        ...state,
+        sourceImage: action.source
+      }
+    case 'change-container':
+      return {
+        ...state,
+        container: action.element
+      }
+    case "change-mode":
+      return { ...state, mode: action.mode }
+      break;
+    case "event":
+      switch (state.mode) {
+        case 'create':
+          switch (action.event.target.className.baseVal) {
+            case 'theSvg':
+            case 'theImage':
+              if (parseInt(state.sourceEdge) >= 0) {
+                return ({ ...state, sourceEdge: -1, edgeState: 0 })
+              }
+              else {
+                let newX = action.event.clientX - state.container.offsetLeft;
+                let newY = action.event.clientY - state.container.offsetTop;
+                let newId = state.nextNodeId
+                let newNodes = [...state.nodes, { id: newId, x: newX, y: newY }]
+                let newAdj = [...state.adj.map(ele => [...ele, 0]), Array(state.adj.length + 1).fill(0)]
+                return ({
+                  ...state,
+                  nodes: newNodes,
+                  adj: newAdj,
+                  nextNodeId: newId + 1
+                })
+              }
+              break;
+            case 'node':
+              if (state.sourceEdge < 0) {
+                return ({ ...state, edgeState: 1, sourceEdge: action.event.target.id })
+              }
+              else {
+                if (action.event.target.id < 0 || typeof state.adj[state.sourceEdge] === 'undefined' || typeof state.adj[state.sourceEdge][action.event.target.id] === 'undefined' || state.adj[state.sourceEdge][action.event.target.id] === 1) return ({ ...state });
+                let newId = state.nextEdgeId;
+                let newEdge = { id: newId, source: state.sourceEdge, target: action.event.target.id }
+                let newAdj = [...state.adj];
+                newAdj[state.sourceEdge][action.event.target.id] = 1;
+                return ({
+                  ...state,
+                  edges: [...state.edges, newEdge],
+                  nextEdgeId: newId + 1,
+                  adj: newAdj,
+                  sourceEdge: -1
+                })
+              }
+            default:
+              return { ...state }
+          }
+          break;
+        case 'image':
+          switch (action.event.target.className.baseVal) {
+            case 'theImage':
+              if (state.imageState == 1) {
+                return {
+                  ...state,
+                  imagePosition: { x: state.imagePosition.x + action.event.clientX - state.firstClick.x, y: state.imagePosition.y + action.event.clientY - state.firstClick.y },
+                  firstClick: { x: 0, y: 0 },
+                  imageState: 0
+                }
+              }
+              else {
+                return {
+                  ...state,
+                  firstClick: { x: action.event.clientX, y: action.event.clientY },
+                  imageState: 1
+                }
+              }
+          }
+          break;
+        case 'modify':
+          break;
+        case 'delete':
+          switch (action.event.target.className.baseVal) {
+            case 'edge':
+              let clickedEdge = state.edges.filter(edge => edge.id == action.event.target.id)[0];
+              let newAdj = state.adj;
+              newAdj[clickedEdge.source][clickedEdge.target] = 0;
+              return ({
+                ...state,
+                adj: newAdj,
+                edges: state.edges.filter(edge => edge.id != action.event.target.id)
+              })
+              break;
+            case 'node':
+              let newAdj2 = state.adj.map((ele, index) => ele.map((ele2, index2) => (index == action.event.target.id || index2 == action.event.target.id) ? 0 : ele2));
+              let newEdges = state.edges.filter(ele => !(ele.source == action.event.target.id || ele.target == action.event.target.id));
+              let newNodes = state.nodes.filter(ele => ele.id != action.event.target.id)
+              return ({
+                ...state,
+                edges: newEdges,
+                adj: newAdj2,
+                nodes: newNodes,
+              })
+              break;
+            default:
+              return { ...state };
+              break;
+          }
+          break;
+      }
+      break;
+    default:
+      console.log('Error, no case was matched')
+      return { ...state }
+      break;
+
+  }
+}
+
 
 function App() {
+  const [state, dispatch] = useReducer(reducer, {
+    mode: 'create',
+    container: '',
+    dimensions: { width: 700, height: 700 },
+
+    nodes: [{ id: 0, x: 10, y: 10 }, { id: 1, x: 50, y: 50 }],
+    nextNodeId: 2,
+
+    edges: [{ id: 0, source: 0, target: 1 }],
+    sourceEdge: -1,
+    targetEdge: -1,
+    nextEdgeId: 1,
+    edgeState: 0,
+
+    adj: [[0, 1], [1, 0]],
+
+    sourceImage: '',
+    imagePosition: { x: 0, y: 0 },
+    imageState: 0,
+    firstClick: { x: 0, y: 0 }
+  });
+
+
+
   const [mode, setMode] = useState("create")
   const [container, setContainer] = useState()
   const [dimensions, setDimensions] = useState({ width: 700, height: 700 })
@@ -104,10 +251,10 @@ function App() {
   }
 
   const addEdge = (source, target) => {
-    if (source < 0 || target < 0) return;
-    if (typeof adj[source] === 'undefined') return;
-    if (typeof adj[source][target] === 'undefined') return;
-    if (adj[source][target] === 1) return;
+    if (source < 0 || target < 0 || typeof adj[source] === 'undefined' || typeof adj[source][target] === 'undefined' || adj[source][target] === 1) return;
+    // if (typeof adj[source] === 'undefined') return;
+    // if (typeof adj[source][target] === 'undefined') return;
+    // if (adj[source][target] === 1) return;
     let newId = getNextEdgeId();
     setEdges([...edges, { id: newId, source: source, target: target }])
     setAdj(adj => {
@@ -133,6 +280,7 @@ function App() {
   }
 
   const handleClick = (event) => {
+    // dispatch({ type: 'change-mode', mode: 'modify' })
 
     switch (mode) {
       case "create":
@@ -140,10 +288,13 @@ function App() {
           case 'theSvg':
           case 'theImage':
             if (sourceEdge) {
-              setSourceEdge();
+              setSourceEdge(-1);
               setEdgeState(0);
             }
-            addNodeMouse(event);
+            else {
+              addNodeMouse(event);
+            }
+
             break;
 
           case 'node':
@@ -218,6 +369,7 @@ function App() {
 
     reader.onload = function (e) {
       setSourceImage(ele => e.target.result)
+      dispatch({ type: 'change-sourceImage', source: e.target.result })
 
     }
 
@@ -236,7 +388,7 @@ function App() {
 
   return (
     <React.Fragment>
-      <Drawer firstClick={firstClick} imageState={imageState} imagePosition={imagePosition} mousePosition={mousePosition} handleMouseMove={handleMouseMove} sourceImage={sourceImage} nodes={nodes} edges={edges} dimensions={dimensions} add={addNodeMouse} svgReference={svgRef} handleClick={handleClick} changeDistances={changeDistances} selected={sourceEdge} />
+      <Drawer state={state} dispatchar={dispatch} firstClick={firstClick} imageState={imageState} imagePosition={imagePosition} mousePosition={mousePosition} handleMouseMove={handleMouseMove} sourceImage={sourceImage} nodes={nodes} edges={edges} dimensions={dimensions} add={addNodeMouse} svgReference={svgRef} handleClick={handleClick} changeDistances={changeDistances} selected={sourceEdge} />
       <button onClick={addRandomNode}>Add node</button>
       <button onClick={reset}>Reset</button>
       <div>
@@ -245,14 +397,14 @@ function App() {
         <button onClick={() => addEdgeCall()}>Add Edge</button>
       </div>
       <div>
-        <button onClick={() => setMode("create")}>Mode Create</button>
-        <button onClick={() => setMode("modify")}>Mode Modify</button>
-        <button onClick={() => setMode("delete")}>Mode Delete</button>
-        <button onClick={() => setMode("image")}>Mode Image</button>
+        <button onClick={() => { setMode("create"); dispatch({ type: 'change-mode', mode: 'create' }) }}>Mode Create</button>
+        <button onClick={() => { setMode("modify"); dispatch({ type: 'change-mode', mode: 'modify' }) }}>Mode Modify</button>
+        <button onClick={() => { setMode("delete"); dispatch({ type: 'change-mode', mode: 'delete' }) }}>Mode Delete</button>
+        <button onClick={() => { setMode("image"); dispatch({ type: 'change-mode', mode: 'image' }) }}>Mode Image</button>
       </div>
       <div>
         <p>
-          State: {mode},
+          State: {state.mode},
           MousePosition: {mousePosition.x} {mousePosition.y}
         </p>
       </div>
