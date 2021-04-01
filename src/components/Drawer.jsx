@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { select } from 'd3';
 
-const Drawer = ({ state, dispatchar, firstClick, imageState, imagePosition, mousePosition, handleMouseMove, sourceImage, nodes, edges, dimensions, add, svgReference, handleClick, changeDistances, selected }) => {
+const Drawer = ({ state, dispatchar }) => {
+    const svgRef = useRef();
     const [inNode, setinNode] = useState(null)
     var containerEle = document.getElementById('container')
     const [mousePosition2, setMousePosition2] = useState({ x: 0, y: 0 })
@@ -13,14 +14,11 @@ const Drawer = ({ state, dispatchar, firstClick, imageState, imagePosition, mous
 
 
     useEffect(() => {
-        const svg = select(svgReference.current)
+        const svg = select(svgRef.current)
         containerEle = document.getElementById('container')
 
-        changeDistances(containerEle)
+        // changeDistances(containerEle)
         dispatchar({ type: 'change-container', element: containerEle })
-
-
-
 
         svg.selectAll('.edge')
             .data(state.edges)
@@ -38,25 +36,29 @@ const Drawer = ({ state, dispatchar, firstClick, imageState, imagePosition, mous
                 return "M" + originNode.x + ',' + originNode.y + 'L' + finalNode.x + ',' + finalNode.y;
             })
 
-        // svg.select('#photo')
-        //     .attr('x', () => {
-        //         if (imageState == 0) return imagePosition.x;
-        //         return imagePosition.x + mousePosition2.x - firstClick.x;
-        //     })
-        //     .attr('y', () => {
-        //         if (imageState == 0) return imagePosition.y;
-        //         return imagePosition.y + mousePosition2.y - firstClick.y;
-        //     })
-        //     .attr('width', 500)
-        //     .attr('height', 500)
-        //     .attr('href', d => sourceImage)
+        svg.selectAll('.edge-label')
+            .data(state.edges)
+            .join('text')
+            .attr('class', 'edge-label')
+            .attr('x', d => {
+                let originNode = state.nodes.filter(n => n.id == d.source)[0];
+                let finalNode = state.nodes.filter(n => n.id == d.target)[0];
+                return ((originNode.x + finalNode.x) / 2);
+            })
+            .attr('y', d => {
+                let originNode = state.nodes.filter(n => n.id == d.source)[0];
+                let finalNode = state.nodes.filter(n => n.id == d.target)[0];
+                return ((originNode.y + finalNode.y) / 2);
+            })
+            .text(d => d.value)
+            .attr('fill', 'blue')
 
         svg.selectAll('.node')
             .data(state.nodes)
             .join('circle')
             .attr('class', 'node')
             .attr('id', d => d.id)
-            .attr('r', 7)
+            .attr('r', 10)
             .attr('z-index', 10)
             .attr('cx', d => d.x)
             .attr('cy', d => d.y)
@@ -83,22 +85,11 @@ const Drawer = ({ state, dispatchar, firstClick, imageState, imagePosition, mous
             .attr('dx', 0)
             .attr('dy', 0)
             .raise()
-        // .attr('href', () => {
-        //     var image = document.getElementById("upload").files[0];
 
-        //     var reader = new FileReader();
 
-        //     reader.onload = function (e) {
-        //         return e.target.result;
-        //     }
-        //     // console.log(reader.readAsDataURL(image))
-        //     reader.readAsDataURL(image);
-
-        // })
-
-    }, [state.nodes, state.edges, dimensions, inNode, state.sourceEdge])
+    }, [state.nodes, state.edges, inNode, state.sourceEdge])
     useEffect(() => {
-        const svg = select(svgReference.current)
+        const svg = select(svgRef.current)
         svg.select('#photo')
             .attr('x', () => {
                 if (state.imageState == 0) return state.imagePosition.x;
@@ -111,7 +102,7 @@ const Drawer = ({ state, dispatchar, firstClick, imageState, imagePosition, mous
     }, [mousePosition2])
 
     useEffect(() => {
-        const svg = select(svgReference.current)
+        const svg = select(svgRef.current)
         svg.select('#photo')
             .attr('x', () => {
                 if (state.imageState == 0) return state.imagePosition.x;
@@ -127,8 +118,8 @@ const Drawer = ({ state, dispatchar, firstClick, imageState, imagePosition, mous
     }, [state.sourceImage])
 
     return (
-        <div id='container' style={{ width: dimensions.width, height: dimensions.height, marginBottom: "2rem" }} >
-            <svg id='svg' className='theSvg' ref={svgReference} style={{ width: "100%" }} onMouseMove={handleMouseMove2} onClick={(e) => { dispatchar({ type: 'event', event: e }); handleClick(e); console.log('In drawer: ', e.target.className.baseVal) }}>
+        <div id='container' style={{ width: state.dimensions.width, height: state.dimensions.height, marginBottom: "2rem" }} >
+            <svg id='svg' className='theSvg' ref={svgRef} style={{ width: "100%" }} onMouseMove={handleMouseMove2} onClick={(e) => { dispatchar({ type: 'event', event: e }); console.log('In drawer: ', e.target.className.baseVal) }}>
                 <image className='theImage' href='./googleLogo.png' id='photo' x="0" y="0" height="100" width="100" />
                 <circle r='5' cx='20' cy='20' fill='red' >prueba de circulo</circle>
             </svg>
