@@ -2,6 +2,12 @@ import './App.css';
 import React, { useState, useRef, useEffect, useCallback, useReducer } from 'react';
 
 import Drawer from './components/Drawer'
+import OutputBlock from './components/OutputBlock'
+import Panel from './components/Panel'
+import CreateBox from './components/CreateBox'
+import DeleteBox from './components/DeleteBox'
+import ImageBox from './components/ImageBox'
+
 import { every } from 'd3-array';
 import { packSiblings } from 'd3-hierarchy';
 
@@ -10,14 +16,14 @@ const initialState = {
   container: '',
   dimensions: { width: 700, height: 700 },
 
-  nodes: [{ id: 0, x: 10, y: 10 }, { id: 1, x: 50, y: 50 }],
-  nextNodeId: 2,
+  nodes: [],
+  nextNodeId: 0,
 
-  edges: [{ id: 0, source: 0, target: 1, value: 0 }],
+  edges: [],
   sourceEdge: -1,
-  nextEdgeId: 1,
+  nextEdgeId: 0,
 
-  adj: [[0, 1], [1, 0]],
+  adj: [],
 
   sourceImage: '',
   imagePosition: { x: 0, y: 0 },
@@ -25,14 +31,27 @@ const initialState = {
   firstClick: { x: 0, y: 0 }
 }
 
+const getNode = (nodes, id) => {
+  for (let index in nodes) {
+    if (nodes[index].id == id) return { ...nodes[index] };
+  }
+}
 
+
+const distance = (x1, y1, x2, y2) => {
+  return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+}
 
 function reducer(state, action) {
-  console.log("dispatch used")
   switch (action.type) {
+    case 'configuration':
+      return {
+        ...state,
+        configuration: action.configuration
+      }
     case 'reset':
-      document.getElementById('upload2').value = null;
-      return initialState;
+      // document.getElementById('upload4').value = null;
+      return { ...initialState, container: state.container };
     case 'change-sourceImage':
       return {
         ...state,
@@ -70,6 +89,7 @@ function reducer(state, action) {
               }
               break;
             case 'node':
+            case 'node-label':
               // Creation of and edge
               if (state.sourceEdge < 0) {
                 return ({ ...state, edgeState: 1, sourceEdge: action.event.target.id })
@@ -77,8 +97,17 @@ function reducer(state, action) {
               else {
                 if (action.event.target.id < 0 || typeof state.adj[state.sourceEdge] === 'undefined' || typeof state.adj[state.sourceEdge][action.event.target.id] === 'undefined' || state.adj[state.sourceEdge][action.event.target.id] === 1) return ({ ...state });
                 let newId = state.nextEdgeId;
-                let newEdge = { id: newId, source: parseInt(state.sourceEdge), target: parseInt(action.event.target.id), value: 0 }
                 let newAdj = [...state.adj];
+                if (state.configuration.edgeDefaultValue == -1) {
+                  let originNode = getNode(state.nodes, parseInt(state.sourceEdge))
+                  let finalNode = getNode(state.nodes, parseInt(action.event.target.id))
+                  var newValue = Math.floor(distance(originNode.x, originNode.y, finalNode.x, finalNode.y))
+
+                }
+                else {
+                  var newValue = state.configuration.edgeDefaultValue
+                }
+                let newEdge = { id: newId, source: parseInt(state.sourceEdge), target: parseInt(action.event.target.id), value: newValue }
                 newAdj[state.sourceEdge][action.event.target.id] = 1;
                 return ({
                   ...state,
@@ -104,6 +133,7 @@ function reducer(state, action) {
                 }
               }
               else {
+                if (state.sourceImage == '') return { ...state };
                 return {
                   ...state,
                   firstClick: { x: action.event.clientX, y: action.event.clientY },
@@ -146,6 +176,8 @@ function reducer(state, action) {
           break;
       }
       break;
+    case 'undo':
+      return action.last;
     default:
       console.log('Error, no case was matched')
       return { ...state }
@@ -154,52 +186,117 @@ function reducer(state, action) {
   }
 }
 
+const initialConfiguration = {
+  nodeColor: '#eee',
+  nodeLabelColor: '#111',
+  nodeRadius: 17,
+
+  edgeColor: '#111',
+  edgeStroke: 2.5,
+  edgeLabelColor: '#111',
+  edgeDefaultValue: -1,
+
+  imageWidth: 700,
+  imageHeight: 500
+}
+
+function configurationReducer(state, action) {
+  let changes = {};
+  changes[action.type] = action.value;
+  return {
+    ...state,
+    ...changes
+  }
+
+}
+
+
+
+function testReducer(state, action) {
+  state.testfunction()
+  return { ...state };
+}
 
 function App() {
+  const [configuration, changeConfig] = useReducer(configurationReducer, initialConfiguration);
+
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  const [prueba, setPrueba] = useState(0)
+  const [history, setHistory] = useState([initialState])
+  useEffect(() => {
+    dispatch({ type: 'configuration', configuration })
+  }, [configuration])
+
+  useEffect(() => {
+    setHistory(current => [...current, state])
+  }, [state.nodes, state.edges, state.adj])
+
   const reset = () => {
+    toggleClass('createButton')
     dispatch({ type: 'reset' })
   }
 
 
 
+  const undo = () => {
+    if (history.length > 1) {
+      let hist = history.filter((ele, index) => index < history.length - 1)
+      setHistory(current => hist)
+      dispatch({ type: 'undo', last: hist[hist.length - 1] })
+    }
+
+  }
+  const createButtonRef = useRef()
+
+  const toggleClass = (id) => {
+    let allButtons = document.querySelectorAll('.navButton')
+    for (let i = 0; i < allButtons.length; i++) {
+      allButtons[i].classList.remove('selected')
+    }
+    let element = document.getElementById(id)
+    element.classList.add("selected")
+  }
 
 
   // Image
   function handleImageUpload() {
-    var image = document.getElementById("upload2").files[0];
+    var image = document.getElementById("upload4").files[0];
     var reader = new FileReader();
 
     reader.onload = function (e) {
       dispatch({ type: 'change-sourceImage', source: e.target.result })
     }
+    if (image) reader.readAsDataURL(image);;
 
-    reader.readAsDataURL(image);
   }
 
   return (
     <React.Fragment>
-      <Drawer state={state} dispatchar={dispatch} />
-      <button onClick={reset}>Reset</button>
-      <div>
-        <p>{state.sourceEdge}</p>
+      <div id="left-container">
+        {
+          state.mode == 'create' ? <CreateBox /> : state.mode == 'delete' ? <DeleteBox /> : state.mode == 'image' ? <ImageBox handleImageUpload={handleImageUpload} /> : <ImageBox handleImageUpload />}
       </div>
-      <div>
-        <button onClick={() => { dispatch({ type: 'change-mode', mode: 'create' }) }}>Mode Create</button>
-        <button onClick={() => { dispatch({ type: 'change-mode', mode: 'modify' }) }}>Mode Modify</button>
-        <button onClick={() => { dispatch({ type: 'change-mode', mode: 'delete' }) }}>Mode Delete</button>
-        <button onClick={() => { dispatch({ type: 'change-mode', mode: 'image' }) }}>Mode Image</button>
-      </div>
-      <div>
-        <p>
-          Mode: {state.mode},
-        </p>
-      </div>
-      <div>
-        <input id="upload2" type="file" onChange={handleImageUpload} />
-        <img id="display-image" src="" />
+      {/* <Panel changeConfig={changeConfig} configuration={configuration} handleImageUpload={handleImageUpload} /> */}
+      <div id='central-container'>
 
+        <div>
+
+        </div>
+        <nav>
+          <ul class="nav__link">
+            <li><button id="createButton" className="navButton selected" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'create' }) }} >Mode Add</button></li>
+            <li><button id="deleteButton" className="navButton" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'delete' }) }}>Mode Delete</button></li>
+            <li><button id="imageButton" className="navButton" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'image' }) }}>Mode Image</button></li>
+            <li><button id="reseteButton" className="navButton" onClick={reset}> Reset {"  dqf   "}</button></li>
+
+          </ul>
+        </nav>
+        <Drawer state={state} dispatchar={dispatch} configuration={configuration} />
+      </div>
+
+      <div id="right-container">
+        <OutputBlock adj={state.adj} nodes={state.nodes} edges={state.edges} />
       </div>
 
     </React.Fragment>
