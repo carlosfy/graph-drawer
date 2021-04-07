@@ -184,13 +184,18 @@ button {
 .box-component h3 {
   text-align: center;
   margin-top: 10px;
-  font-size: 17px;
+  font-size: 16px;
 }
 
+.input-container {
+  width: 60%;
+  margin:auto;
+}
 .input-div {
   display: flex;
-  justify-content: space-evenly;
+  justify-content: space-between;
   width: 80%;
+  height: 23px;
   margin:auto;
   margin-top:5px;
 }

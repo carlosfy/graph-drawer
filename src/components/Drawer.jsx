@@ -56,6 +56,7 @@ const Drawer = ({ state, dispatchar, configuration }) => {
 
         svg.selectAll('.edge-label')
             .data(state.edges)
+
             .join('text')
             .attr('class', 'edge-label')
             .attr('x', d => {
@@ -69,6 +70,8 @@ const Drawer = ({ state, dispatchar, configuration }) => {
                 return ((originNode.y + finalNode.y) / 2);
             })
             .text(d => d.value)
+            .attr('opacity', function (d) { if (configuration.showValueEdges) { return 1 } else { return 0 } })
+
             .attr('fill', d => configuration.edgeLabelColor)
 
         svg.selectAll('.node')
@@ -104,6 +107,8 @@ const Drawer = ({ state, dispatchar, configuration }) => {
             .attr('font-weight', 'bolder')
             .text(d => d.id)
             .attr('opacity', 1)
+
+
             .attr('dx', -4)
             .attr('dy', 4)
             .attr('id', d => d.id)

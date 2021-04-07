@@ -55,7 +55,7 @@ function reducer(state, action) {
       }
     case 'reset':
       // document.getElementById('upload4').value = null;
-      return { ...initialState, container: state.container };
+      return { ...initialState, container: state.container, configuration: state.configuration };
     case 'change-sourceImage':
       return {
         ...state,
@@ -178,6 +178,10 @@ function reducer(state, action) {
               break;
           }
           break;
+        case 'config':
+          return { ...state, mode: 'create' }
+        default:
+          return { ...state }
       }
       break;
     case 'undo':
@@ -199,6 +203,7 @@ const initialConfiguration = {
   edgeStroke: 2.5,
   edgeLabelColor: '#111',
   edgeDefaultValue: -1,
+  showValueEdges: false,
 
   imageWidth: 700,
   imageHeight: 500
@@ -241,6 +246,10 @@ function App() {
     dispatch({ type: 'reset' })
   }
 
+  useEffect(() => {
+    toggleClass(state.mode + 'Button')
+
+  }, [state.mode])
 
 
   const undo = () => {
@@ -282,7 +291,7 @@ function App() {
     <React.Fragment>
       <div id="left-container">
         {
-          state.mode == 'create' ? <CreateBox /> : state.mode == 'delete' ? <DeleteBox /> : state.mode == 'image' ? <ImageBox handleImageUpload={handleImageUpload} deleteImage={deleteImage} /> : <ConfigBox changeConfig={changeConfig} configuration={configuration} />}
+          state.mode == 'create' ? <CreateBox configuration={configuration} changeConfig={changeConfig} /> : state.mode == 'delete' ? <DeleteBox /> : state.mode == 'image' ? <ImageBox handleImageUpload={handleImageUpload} deleteImage={deleteImage} /> : <ConfigBox changeConfig={changeConfig} configuration={configuration} />}
       </div>
       {/* <Panel changeConfig={changeConfig} configuration={configuration} handleImageUpload={handleImageUpload} /> */}
       <div id='central-container'>
