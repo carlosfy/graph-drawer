@@ -11,7 +11,11 @@ const CreateBox = () => {
                 <li>To create a node just click on the svg (outside of the nodes)</li>
                 <li>To create an edge click on a node to select the source and then click on another node to choose the target. Click on the background to cancel.</li>
             </ul>
-            <p>Value for new edges: </p>
+            <div className='input-div'><p>Value for new edges: <select name="value-edges" id="select-value">
+                <option value="distance">Distance</option>
+                {[...Array(30).keys()].map(ele => <option name={`${ele}`}>{ele}</option>)}
+            </select></p></div>
+
         </div>
     )
 }

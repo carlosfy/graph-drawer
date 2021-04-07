@@ -7,9 +7,8 @@ import Panel from './components/Panel'
 import CreateBox from './components/CreateBox'
 import DeleteBox from './components/DeleteBox'
 import ImageBox from './components/ImageBox'
+import ConfigBox from './components/ConfigBox'
 
-import { every } from 'd3-array';
-import { packSiblings } from 'd3-hierarchy';
 
 const initialState = {
   mode: 'create',
@@ -44,6 +43,11 @@ const distance = (x1, y1, x2, y2) => {
 
 function reducer(state, action) {
   switch (action.type) {
+    case 'deleteImage':
+      return {
+        ...state,
+        sourceImage: ''
+      }
     case 'configuration':
       return {
         ...state,
@@ -247,7 +251,6 @@ function App() {
     }
 
   }
-  const createButtonRef = useRef()
 
   const toggleClass = (id) => {
     let allButtons = document.querySelectorAll('.navButton')
@@ -270,12 +273,16 @@ function App() {
     if (image) reader.readAsDataURL(image);;
 
   }
+  function deleteImage() {
+    document.getElementById('upload4').value = null;
+    dispatch({ type: 'deleteImage' })
+  }
 
   return (
     <React.Fragment>
       <div id="left-container">
         {
-          state.mode == 'create' ? <CreateBox /> : state.mode == 'delete' ? <DeleteBox /> : state.mode == 'image' ? <ImageBox handleImageUpload={handleImageUpload} /> : <ImageBox handleImageUpload />}
+          state.mode == 'create' ? <CreateBox /> : state.mode == 'delete' ? <DeleteBox /> : state.mode == 'image' ? <ImageBox handleImageUpload={handleImageUpload} deleteImage={deleteImage} /> : <ConfigBox changeConfig={changeConfig} configuration={configuration} />}
       </div>
       {/* <Panel changeConfig={changeConfig} configuration={configuration} handleImageUpload={handleImageUpload} /> */}
       <div id='central-container'>
@@ -285,10 +292,11 @@ function App() {
         </div>
         <nav>
           <ul class="nav__link">
-            <li><button id="createButton" className="navButton selected" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'create' }) }} >Mode Add</button></li>
-            <li><button id="deleteButton" className="navButton" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'delete' }) }}>Mode Delete</button></li>
-            <li><button id="imageButton" className="navButton" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'image' }) }}>Mode Image</button></li>
-            <li><button id="reseteButton" className="navButton" onClick={reset}> Reset {"  dqf   "}</button></li>
+            <li><button id="createButton" className="navButton selected" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'create' }) }} >Add</button></li>
+            <li><button id="deleteButton" className="navButton" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'delete' }) }}>Delete</button></li>
+            <li><button id="imageButton" className="navButton" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'image' }) }}>Image</button></li>
+            <li><button id="configButton" className="navButton" onClick={(e) => { toggleClass(e.target.id); dispatch({ type: 'change-mode', mode: 'config' }) }}>Config</button></li>
+            <li><button id="reseteButton" className="navButton" onClick={reset}> Reset </button></li>
 
           </ul>
         </nav>
